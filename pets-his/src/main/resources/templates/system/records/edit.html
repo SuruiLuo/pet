@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+    <th:block th:include="include :: header('修改诊疗记录')" />
+    <th:block th:include="include :: select2-css" />
+</head>
+<style>
+    /* 自定义样式 */
+    .medication-row {
+        margin-bottom: 10px;
+        padding: 5px;
+        border-bottom: 1px solid #eee;
+    }
+    .input-group-addon {
+        min-width: 60px;
+        text-align: center;
+    }
+</style>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight ibox-content">
+    <form class="form-horizontal m" id="form-records-edit" th:object="${medicalRecords}">
+        <input name="recordId" th:field="*{recordId}" type="hidden">
+        <input name="recordId" th:field="*{appointmentId}" type="hidden">
+        <input name="recordId" th:field="*{createBy}" type="hidden">
+        <div class="col-xs-12">
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">宠物名：</label>
+                <div class="col-sm-8">
+                    <input name="petId" th:field="*{petName}" class="form-control" type="text" required disabled>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xs-12">
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">诊断结果：</label>
+                <div class="col-sm-8">
+                    <textarea name="diagnosis" class="form-control">[[*{diagnosis}]]</textarea>
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="col-sm-3 control-label">用药记录：</label>
+            <div class="col-sm-8">
+                <div id="medication-container">
+                    <!-- 动态药品行 -->
+                </div>
+                <button type="button" class="btn btn-default btn-sm" id="btn-add-med">
+                    <i class="fa fa-plus"></i> 添加药品
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: select2-js" />
+<script th:inline="javascript">
+    var prefix = ctx + "system/records";
+    // 全局变量，用于缓存药品信息
+    var cachedDrugData = null;
+    // 存储用药记录的数组
+    var medicationRecords = [];
+
+    // 动态加载药品选择框
+    function initDrugSelect(selectElement) {
+        const $select = $(selectElement);
+        if ($select.data('loaded')) return;
+
+        // 检查缓存中是否已经有药品信息
+        if (cachedDrugData) {
+            populateSelectOptions($select, cachedDrugData);
+        } else {
+            $.ajax({
+                url: "/system/inventory/list",
+                type: "POST",
+                dataType: "json",
+                success: function (res) {
+                    console.log(res.rows);
+                    var data = res.rows;
+                    if (Array.isArray(data)) {
+                        // 缓存药品信息
+                        cachedDrugData = data;
+                        populateSelectOptions($select, data);
+                    } else {
+                        console.error('服务器返回的数据不是数组类型:', data);
+                    }
+                },
+                error: function (error) {
+                    // 处理请求出错的情况
+                    console.error('请求出错:', error);
+                }
+            });
+        }
+    }
+
+    // 填充选择框选项的函数
+    function populateSelectOptions($select, data) {
+        // 创建一个默认选项
+        let options = '';
+        // 遍历数据，为每个药品创建一个 option 元素
+
+        data.forEach(item => {
+            options += `<option value="${item.drugId}" data-unitQuantity="${item.unitQuantity}" data-price="${item.retailPrice}">${item.drugName} (${item.specification})</option>`;
+        });
+        // 将生成的 option 元素添加到选择框中
+        $select.html(options);
+        // 标记该选择框已经加载过数据
+        $select.data('loaded', true);
+
+        // 初始化 Select2 插件，设置 placeholder 并清除默认选择
+        $select.select2({
+            placeholder: '请选择',  // 设置占位符文本
+            allowClear: true        // 允许清除选择
+        }).val(null).trigger('change');
+
+        // 为 select 元素添加 change 事件
+        $select.on('change', function () {
+            const selectedPrice = $(this).find('option:selected').attr('data-price');
+            // console.log("售价："+selectedPrice)
+            const $retailPriceInput = $(this).closest('.medication-item').find('input[name*=".retailPrice"]');
+            $retailPriceInput.val(selectedPrice);
+
+            const selectedUnitQuantity = $(this).find('option:selected').attr('data-unitQuantity');
+            const  $unitQuantityInput = $(this).closest('.medication-item').find('input[name*=".unitQuantity"]');
+            $unitQuantityInput.val(selectedUnitQuantity)
+        });
+    }
+
+    // 检查药品是否已经存在
+    function isDrugAlreadyAdded(drugId) {
+        return medicationRecords.some(record => record.drugId === drugId);
+    }
+
+    // 添加药品行（修正索引生成方式）
+    let medicationIndex = 0; // 使用自增索引避免重复
+    $('#btn-add-med').click(function() {
+        const index = medicationIndex++;
+        const newRow = $(`
+                <div class="medication-item form-inline" style="margin-bottom:20px;display: flex;flex-wrap: wrap;gap: 10px; ">
+                    <select class="form-control drug-select"
+                            name="medications[${index}].drugId"
+                            style="width:250px;margin-right:10px;"
+                            data-load-url="${ctx}/list"></select>
+                    <button type="button" class="btn btn-danger btn-xs"
+                            onclick="$(this).closest('.medication-item').remove(); removeRecord($(this).closest('.medication-item').find('.drug-select').val());"
+                            style="margin-left:10px;">
+                        <i class="fa fa-remove"></i>
+                    </button>
+                    <div>
+                        <label for="dosage">单次用量</label>
+                        <input type="number" class="form-control required"
+                               id="dosage"
+                               name="medications[${index}].dosage"
+                               placeholder="输入单次用量" style="width:120px;margin-right:10px;"
+                               min="1" oninput="this.value = this.value > 0? this.value : ''">
+                    </div>
+                    <!-- 每日次数 -->
+                    <div>
+                        <label for="frequency">每日（次）</label>
+                        <select class="form-control" id="frequency"
+                                name="medications[${index}].frequency"
+                                style="width:120px;">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                        </select>
+                    </div>
+                    <!-- 用药天数 -->
+                    <div>
+                        <label for="days">用药天数（天）</label>
+                        <input type="number" class="form-control"
+                           id="days"
+                           name="medications[${index}].days"
+                           placeholder="输入用药天数" style="width:120px;margin-right:10px;"
+                           min="1" oninput="this.value = this.value > 0? this.value : ''">
+                    </div>
+                    <div>
+                        <label for="usageMethod">用药方式</label>
+                        <select class="form-control" name="medications[${index}].usageMethod"
+                                style="width:120px;margin-right:10px;">
+                            <option value="口服">口服</option>
+                            <option value="外用">外用</option>
+                            <option value="静脉注射">静脉注射</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="retailPrice">单个零售价</label>
+                        <input type="text" class="form-control required"
+                               name="medications[${index}].retailPrice"
+                               style="width:120px;margin-right:10px;" readonly>
+                        <input type="hidden" class="form-control required" name="medications[${index}].unitQuantity">
+                    </div>
+                </div>
+            `)
+
+        $('#medication-container').append(newRow);
+        initDrugSelect(newRow.find('.drug-select'));
+        $('#medication-form').append(newRow.find('input[name^="medications"], select[name^="medications"]'));
+        newRow.find('.drug-select').on('change', function () {
+            const selectedDrugId = $(this).val();
+            if (selectedDrugId) {
+                if (isDrugAlreadyAdded(selectedDrugId)) {
+                    alert('同种药不能重复添加，请重新选择！');
+                    $(this).val(null).trigger('change'); // 清空选择
+                } else {
+                    // // 若不重复则添加到记录中
+                    // const dosage = newRow.find('input[name*="dosage"]').val();
+                    // const retailPrice = newRow.find('input[name*="retailPrice"]').val();
+                    // const usageMethod = newRow.find('select[name*="usageMethod"]').val();
+                    // const frequency = newRow.find('select[name*="frequency"]').val();
+                    // const days = newRow.find('select[name*="days"]').val();
+                    // // 调试输出所有值
+                    // console.log(dosage,retailPrice,usageMethod,frequency,days)
+                    //
+                    // // 更新总数量
+                    // updateTotalQuantity(newRow);
+                    //
+                    // medicationRecords.push({
+                    //     drugId: selectedDrugId,
+                    //     dosage: dosage,
+                    //     retailPrice: retailPrice,
+                    //     usageMethod: usageMethod,
+                    //     frequency: frequency,
+                    //     days: days
+                    // });
+                    // console.log(medicationRecords);
+                }
+            }
+        });
+
+        // 检查药品是否重复选择
+        function checkDuplicateMedicine(selectedMedicineId) {
+            if (isDrugAlreadyAdded(selectedDrugId)) {
+                alert('同种药不能重复添加，请重新选择！');
+                $(this).val(null).trigger('change'); // 清空选择
+            }
+        }
+
+        // // 监听药品选择框的 change 事件
+        // newRow.find('.drug-select').on('change', function () {
+        //     const selectedDrugId = $(this).val();
+        //     if (selectedDrugId) {
+        //         if (isDrugAlreadyAdded(selectedDrugId)) {
+        //             alert('同种药不能重复添加，请重新选择！');
+        //             $(this).val(null).trigger('change'); // 清空选择
+        //         } else {
+        //             // 若不重复则添加到记录中
+        //             const dosage = $(this).closest('.medication-item').find('input[name*="dosage"]').val();
+        //             const unitPrice = $(this).closest('.medication-item').find('input[name*="unitPrice"]').val();
+        //             const usageMethod = $(this).closest('.medication-item').find('select[name*="usageMethod"]').val();
+        //             const frequency = $(this).closest('.medication-item').find('select[name*="frequency"]').val();
+        //             const days = $(this).closest('.medication-item').find('select[name*="days"]').val();
+        //             const totalQuantity = Number(dosage) * Number(frequency) * Number(days);
+        //             newRow.find('.total-quantity-input').val(totalQuantity);
+        //             medicationRecords.push({
+        //                 drugId: selectedDrugId,
+        //                 dosage: dosage,
+        //                 unitPrice: unitPrice,
+        //                 usageMethod: usageMethod,
+        //                 frequency: frequency,
+        //                 days: days
+        //             });
+        //             console.log(medicationRecords)
+        //         }
+        //     }
+        // });
+    });
+    // 移除记录的函数
+    function removeRecord(drugId) {
+        medicationRecords = medicationRecords.filter(record => record.drugId !== drugId);
+    }
+    // 正则
+    function extractNumber(str) {
+        const match = str.match(/\d+/);
+        return match ? parseInt(match[0]) : 0;
+    }
+
+    function submitHandler() {
+        let cost = 0;
+        let totalQuantity = 0;
+        if ($.validate.form()) {
+            // 收集诊疗记录基本信息
+            const recordId = $('#form-records-edit input[name="recordId"]').val();
+            const appointmentId = $('#form-records-edit input[name="appointmentId"]').val();
+            const createBy = $('#form-records-edit input[name="createBy"]').val();
+            const diagnosis = $('#form-records-edit textarea[name="diagnosis"]').val();
+            const petName = $('#form-records-edit textarea[name="petName"]').val();
+            // 收集用药记录
+            medicationRecords = [];
+            $('#medication-container .medication-item').each(function() {
+                const drugId = $(this).find('.drug-select').val();
+                const dosage = $(this).find('input[name*="dosage"]').val();
+                const retailPrice = $(this).find('input[name*="retailPrice"]').val();
+                const usageMethod = $(this).find('select[name*="usageMethod"]').val();
+                const frequency = $(this).find('select[name*="frequency"]').val();
+                const days = $(this).find('input[name*="days"]').val();
+                const unitQuantity = $(this).find('input[name*="unitQuantity"]').val();
+                const createTime = new Date();
+                if (drugId && dosage && usageMethod && frequency && days) {
+                    // 这里假设你可以通过 drugId 获取药品售价，实际中需要从后端获取
+                    console.log(retailPrice)
+                    console.log(dosage)
+                    console.log(frequency)
+                    console.log(days)
+                    const newDosage = extractNumber(dosage)
+                    const newFrequency = extractNumber(frequency)
+                    totalQuantity = Math.ceil(newDosage * newFrequency * days / unitQuantity);
+                    const oneCost = retailPrice * totalQuantity;
+                    cost += oneCost;
+
+                    if (!isDrugAlreadyAdded(drugId)) {
+                        medicationRecords.push({
+                            recordId: recordId,
+                            drugId: drugId,
+                            dosage: '单次用量'+dosage,
+                            retailPrice: retailPrice,
+                            usageMethod: usageMethod,
+                            frequency: '一日'+frequency+'次',
+                            days: days,
+                            totalQuantity: totalQuantity,
+                            createTime: createTime
+                        });
+                    }
+
+
+                    // 构建完整的提交数据
+                    const formData = {
+                        recordId: recordId,
+                        appointmentId: appointmentId,
+                        createBy: createBy,
+                        diagnosis: diagnosis,
+                        petName: petName,
+                        cost: cost,
+                        medications: medicationRecords
+                    };
+                    console.log("诊疗记录：")
+                    console.log(formData)
+
+                    // 发送请求到服务器
+                    $.ajax({
+                        url: prefix + "/edit",
+                        type: "POST",
+                        contentType: "application/json",
+                        data: JSON.stringify(formData), // 将 formData 对象转换为 JSON 字符串
+                        success: function(response) {
+                            console.log(response)
+                            $.modal.close()
+                        },
+                        error: function(error) {
+                            console.error('请求出错:', error);
+                            alert('请求出错，请稍后重试！');
+                        }
+                    });
+                }else{
+                    alert("用药情况不能为空");
+                }
+            });
+            // 清空数组
+            medicationRecords = [];
+        }
+    }
+</script>
+</body>
+</html>

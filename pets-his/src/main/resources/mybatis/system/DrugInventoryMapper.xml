@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petHis.project.system.inventory.mapper.DrugInventoryMapper">
+    
+    <resultMap type="DrugInventory" id="DrugInventoryResult">
+        <result property="drugId"    column="drug_id"    />
+        <result property="drugName"    column="drug_name"    />
+        <result property="specification"    column="specification"    />
+        <result property="manufacturer"    column="manufacturer"    />
+        <result property="stockQuantity"    column="stock_quantity"    />
+        <result property="batchNumber"    column="batch_number"    />
+        <result property="expirationDate"    column="expiration_date"    />
+        <result property="purchasePrice"    column="purchase_price"    />
+        <result property="retailPrice"    column="retail_price"    />
+        <result property="storageLocation"    column="storage_location"    />
+        <result property="warningThreshold"    column="warning_threshold"    />
+        <result property="status"    column="status"    />
+        <result property="delFlag"    column="del_flag"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="unitPrice"    column="unit_price"    />
+        <result property="unitQuantity"    column="unit_quantity"    />
+        <result property="unitType"    column="unit_type"    />
+    </resultMap>
+
+    <sql id="selectDrugInventoryVo">
+        select drug_id, drug_name, specification, manufacturer, stock_quantity, batch_number, expiration_date,
+               purchase_price, retail_price, storage_location, warning_threshold, status, del_flag, create_time,
+               update_time, unit_price, unit_quantity, unit_type
+            from drug_inventory
+    </sql>
+
+    <select id="selectDrugInventoryList" parameterType="DrugInventory" resultMap="DrugInventoryResult">
+        <include refid="selectDrugInventoryVo"/>
+        <where>  
+            <if test="drugName != null  and drugName != ''"> and drug_name like concat('%', #{drugName}, '%')</if>
+            <if test="specification != null  and specification != ''"> and specification like concat('%', #{specification}, '%')</if>
+            <if test="manufacturer != null  and manufacturer != ''"> and manufacturer like concat('%', #{manufacturer}, '%')</if>
+            <if test="stockQuantity != null "> and stock_quantity = #{stockQuantity}</if>
+            <if test="batchNumber != null  and batchNumber != ''"> and batch_number = #{batchNumber}</if>
+            <if test="expirationDate != null "> and expiration_date = #{expirationDate}</if>
+            <if test="purchasePrice != null "> and purchase_price = #{purchasePrice}</if>
+            <if test="retailPrice != null "> and retail_price = #{retailPrice}</if>
+            <if test="storageLocation != null  and storageLocation != ''"> and storage_location = #{storageLocation}</if>
+            <if test="warningThreshold != null "> and warning_threshold = #{warningThreshold}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectDrugInventoryByDrugId" parameterType="Long" resultMap="DrugInventoryResult">
+        <include refid="selectDrugInventoryVo"/>
+        where drug_id = #{drugId}
+    </select>
+
+    <insert id="insertDrugInventory" parameterType="DrugInventory" useGeneratedKeys="true" keyProperty="drugId">
+        insert into drug_inventory
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="drugName != null and drugName != ''">drug_name,</if>
+            <if test="specification != null and specification != ''">specification,</if>
+            <if test="manufacturer != null and manufacturer != ''">manufacturer,</if>
+            <if test="stockQuantity != null">stock_quantity,</if>
+            <if test="batchNumber != null and batchNumber != ''">batch_number,</if>
+            <if test="expirationDate != null">expiration_date,</if>
+            <if test="purchasePrice != null">purchase_price,</if>
+            <if test="retailPrice != null">retail_price,</if>
+            <if test="storageLocation != null">storage_location,</if>
+            <if test="warningThreshold != null">warning_threshold,</if>
+            <if test="status != null">status,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="drugName != null and drugName != ''">#{drugName},</if>
+            <if test="specification != null and specification != ''">#{specification},</if>
+            <if test="manufacturer != null and manufacturer != ''">#{manufacturer},</if>
+            <if test="stockQuantity != null">#{stockQuantity},</if>
+            <if test="batchNumber != null and batchNumber != ''">#{batchNumber},</if>
+            <if test="expirationDate != null">#{expirationDate},</if>
+            <if test="purchasePrice != null">#{purchasePrice},</if>
+            <if test="retailPrice != null">#{retailPrice},</if>
+            <if test="storageLocation != null">#{storageLocation},</if>
+            <if test="warningThreshold != null">#{warningThreshold},</if>
+            <if test="status != null">#{status},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateDrugInventory" parameterType="DrugInventory">
+        update drug_inventory
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="drugName != null and drugName != ''">drug_name = #{drugName},</if>
+            <if test="specification != null and specification != ''">specification = #{specification},</if>
+            <if test="manufacturer != null and manufacturer != ''">manufacturer = #{manufacturer},</if>
+            <if test="stockQuantity != null">stock_quantity = #{stockQuantity},</if>
+            <if test="batchNumber != null and batchNumber != ''">batch_number = #{batchNumber},</if>
+            <if test="expirationDate != null">expiration_date = #{expirationDate},</if>
+            <if test="purchasePrice != null">purchase_price = #{purchasePrice},</if>
+            <if test="retailPrice != null">retail_price = #{retailPrice},</if>
+            <if test="storageLocation != null">storage_location = #{storageLocation},</if>
+            <if test="warningThreshold != null">warning_threshold = #{warningThreshold},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where drug_id = #{drugId}
+    </update>
+
+    <delete id="deleteDrugInventoryByDrugId" parameterType="Long">
+        delete from drug_inventory where drug_id = #{drugId}
+    </delete>
+
+    <delete id="deleteDrugInventoryByDrugIds" parameterType="String">
+        delete from drug_inventory where drug_id in 
+        <foreach item="drugId" collection="array" open="(" separator="," close=")">
+            #{drugId}
+        </foreach>
+    </delete>
+
+</mapper>

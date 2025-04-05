@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petHis.project.system.appointments.mapper.AppointmentsMapper">
+    
+    <resultMap type="Appointments" id="AppointmentsResult">
+        <result property="appointmentId"    column="appointment_id"    />
+        <result property="petId"    column="pet_id"    />
+        <result property="doctorId"    column="doctor_id"    />
+        <result property="appointmentTime"    column="appointment_time"    />
+        <result property="status"    column="status"    />
+        <!-- 非数据库字段映射 客户名 -->
+        <result property="clientName" column="clientName"/>
+        <!-- 非数据库字段映射 用户名 -->
+        <result property="userName" column="userName"/>
+        <!-- 非数据库字段映射 宠物名 -->
+        <result property="petName" column="petName"/>
+    </resultMap>
+
+<!--    <sql id="selectAppointmentsVo">-->
+<!--        select appointment_id, pet_id, doctor_id, appointment_time, status from appointments-->
+<!--    </sql>-->
+    <sql id="selectAppointmentsVo">
+        select a.appointment_id, a.pet_id, a.doctor_id, a.appointment_time, a.status,
+               p.name as petName,u.user_name as userName,c.name as clientName
+        from appointments a
+            inner join pets p on a.pet_id = p.pet_id
+            inner join clients c on p.client_id = c.client_id
+            inner join sys_user u on a.doctor_id = u.user_id
+    </sql>
+
+    <select id="selectAppointmentsList" parameterType="Appointments" resultMap="AppointmentsResult">
+        <include refid="selectAppointmentsVo"/>
+        <where>  
+            <if test="petId != null "> and pet_id = #{petId}</if>
+            <if test="doctorId != null "> and doctor_id = #{doctorId}</if>
+            <if test="appointmentTime != null "> and appointment_time = #{appointmentTime}</if>
+            <if test="status != null  and status != ''"> and a.status = #{status}</if>
+            <if test="clientName != null  and clientName != ''"> and c.name like concat('%', #{clientName}, '%')</if>
+            <if test="petName != null  and petName != ''"> and p.name like concat('%', #{petName}, '%')</if>
+            <if test="userName != null  and userName != ''"> and u.user_name like concat('%', #{userName}, '%')</if>
+        </where>
+    </select>
+    
+    <select id="selectAppointmentsByAppointmentId" parameterType="Long" resultMap="AppointmentsResult">
+        <include refid="selectAppointmentsVo"/>
+        where appointment_id = #{appointmentId}
+    </select>
+
+    <insert id="insertAppointments" parameterType="Appointments" useGeneratedKeys="true" keyProperty="appointmentId">
+        insert into appointments
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="petId != null">pet_id,</if>
+            <if test="doctorId != null">doctor_id,</if>
+            <if test="appointmentTime != null">appointment_time,</if>
+            <if test="status != null">status,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="petId != null">#{petId},</if>
+            <if test="doctorId != null">#{doctorId},</if>
+            <if test="appointmentTime != null">#{appointmentTime},</if>
+            <if test="status != null">#{status},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAppointments" parameterType="Appointments">
+        update appointments
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="petId != null">pet_id = #{petId},</if>
+            <if test="doctorId != null">doctor_id = #{doctorId},</if>
+            <if test="appointmentTime != null">appointment_time = #{appointmentTime},</if>
+            <if test="status != null">status = #{status},</if>
+        </trim>
+        where appointment_id = #{appointmentId}
+    </update>
+
+    <delete id="deleteAppointmentsByAppointmentId" parameterType="Long">
+        delete from appointments where appointment_id = #{appointmentId}
+    </delete>
+
+    <delete id="deleteAppointmentsByAppointmentIds" parameterType="String">
+        delete from appointments where appointment_id in 
+        <foreach item="appointmentId" collection="array" open="(" separator="," close=")">
+            #{appointmentId}
+        </foreach>
+    </delete>
+
+<!--    判断数据表里是否已经存在同宠物同时间的预约信息-->
+    <select id="isPetAlreadyBookedOnDate" parameterType="Appointments">
+        SELECT EXISTS (
+           SELECT 1
+           FROM appointments
+           WHERE pet_id = #{petId}
+             AND appointment_time = #{appointmentTime}
+       ) AS record_exists;
+    </select>
+
+</mapper>

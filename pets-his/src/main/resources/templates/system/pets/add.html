@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+    <th:block th:include="include :: header('新增宠物')" />
+    <th:block th:include="include :: datetimepicker-css" />
+</head>
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-pets-add">
+            <!-- 客户信息区域 -->
+            <h4 class="form-header h4">客户信息</h4>
+            <div class="col-xs-12">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label" is-required>手机号：</label>
+                    <div class="col-sm-8">
+                        <input type="text"
+                               id="clientPhone"
+                               name="clientPhone"
+                               class="form-control"
+                               placeholder="输入手机号自动检索客户"
+                               required
+                               onblur="checkClient()"> <!-- 失去焦点时触发校验 -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-sm-3 control-label" is-required>姓名：</label>
+                    <div class="col-sm-8">
+                        <input type="text"
+                               id="clientName"
+                               name="clientName"
+                               class="form-control"
+                               placeholder="输入手机号自动检索客户"
+                               required>
+                    </div>
+                </div>
+                <!-- 添加隐藏输入框用于存储客户表主键 ID -->
+                <input type="hidden" id="clientId" name="clientId">
+            </div>
+
+
+            <h4 class="form-header h4">宠物信息</h4>
+            <div class="col-xs-12">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label is-required">宠物名：</label>
+                    <div class="col-sm-8">
+                        <input name="name" class="form-control" type="text" required>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-12">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label is-required">品种：</label>
+                    <div class="col-sm-8">
+                        <select name="type" class="form-control m-b" th:with="type=${@dict.getType('sys_pet_type')}" required>
+                            <option value="">-- 请选择 --</option>
+                            <option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}"></option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-12">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label">出生日期：</label>
+                    <div class="col-sm-8">
+                        <div class="input-group date">
+                            <input name="birthday" class="form-control" placeholder="yyyy-MM-dd" type="text">
+                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: datetimepicker-js" />
+    <script th:inline="javascript">
+        // 手机号校验与客户查询
+        function checkClient() {
+            const phone = $('#clientPhone').val();
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                alert('手机号格式错误');
+                return;
+            }
+
+            $.ajax({
+                url: '/system/clients/list',
+                type: 'POST',
+                data: { phone: phone },
+                success: function(res) {
+                    console.log(res);
+                    // 判断是否查询到客户信息
+                    if (res.total > 0 && res.rows && res.rows.length > 0) {
+                        // 将姓名填充到表单输入框中
+                        $('#clientName').val(res.rows[0].name).prop('disabled', true);
+                        $('#clientId').val(res.rows[0].clientId);
+                        // $('#clientName').val(res.filledValue).prop('disabled', true);
+                    } else {
+                        // 没有查询到客户信息，清空姓名输入框
+                        $('#clientName').val('').prop('disabled', false);
+                        // $('#input2').val('').prop('disabled', false);
+                        alert("没有找到该手机号对应的客户，请检查手机号输入是否有误，确认无误可新建客户信息");
+                    }
+                }
+            });
+        }
+        var prefix = ctx + "system/pets"
+        $("#form-pets-add").validate({
+            focusCleanup: true
+        });
+
+        function submitHandler() {
+            if ($.validate.form()) {
+                console.log($('#form-pets-add').serialize())
+                // const jsonData = JSON.stringify($('#form-pets-add').serialize())
+                $.operate.save(prefix + "/add", $('#form-pets-add').serialize());
+            }
+        }
+
+        $("input[name='birthday']").datetimepicker({
+            format: "yyyy-mm-dd",
+            minView: "month",
+            autoclose: true
+        });
+    </script>
+</body>
+</html>

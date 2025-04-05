@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petHis.project.system.insurance.mapper.InsuranceMapper">
+    
+    <resultMap type="Insurance" id="InsuranceResult">
+        <result property="insuranceId"    column="insurance_id"    />
+        <result property="companyId"    column="company_id"    />
+        <result property="premium"    column="premium"    />
+        <result property="name"    column="name"    />
+        <result property="level1Num"    column="level_1_num"    />
+        <result property="level1ClaimRatio"    column="level_1_claim_ratio"    />
+        <result property="level2Num"    column="level_2_num"    />
+        <result property="level2ClaimRatio"    column="level_2_claim_ratio"    />
+    </resultMap>
+
+    <sql id="selectInsuranceVo">
+        select insurance_id, company_id, premium, name, level_1_num, level_1_claim_ratio, level_2_num, level_2_claim_ratio from insurance
+    </sql>
+
+    <select id="selectInsuranceList" parameterType="Insurance" resultMap="InsuranceResult">
+        <include refid="selectInsuranceVo"/>
+        <where>  
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+        </where>
+    </select>
+    
+    <select id="selectInsuranceByInsuranceId" parameterType="Long" resultMap="InsuranceResult">
+        <include refid="selectInsuranceVo"/>
+        where insurance_id = #{insuranceId}
+    </select>
+
+    <insert id="insertInsurance" parameterType="Insurance" useGeneratedKeys="true" keyProperty="insuranceId">
+        insert into insurance
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="companyId != null and companyId != ''">company_id,</if>
+            <if test="premium != null and premium != ''">premium,</if>
+            <if test="level1Num != null">level_1_num,</if>
+            <if test="level1ClaimRatio != null">level_1_claim_ratio,</if>
+            <if test="level2Num != null">level_2_num,</if>
+            <if test="level2ClaimRatio != null">level_2_claim_ratio,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="companyId != null and companyId != ''">#{companyId},</if>
+            <if test="premium != null and premium != ''">#{premium},</if>
+            <if test="level1Num != null">#{level1Num},</if>
+            <if test="level1ClaimRatio != null">#{level1ClaimRatio},</if>
+            <if test="level2Num != null">#{level2Num},</if>
+            <if test="level2ClaimRatio != null">#{level2ClaimRatio},</if>
+         </trim>
+    </insert>
+
+    <update id="updateInsurance" parameterType="Insurance">
+        update insurance
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="companyId != null and companyId != ''">company_id = #{companyId},</if>
+            <if test="premium != null and premium != ''">premium = #{premium},</if>
+            <if test="level1Num != null">level_1_num = #{level1Num},</if>
+            <if test="level1ClaimRatio != null">level_1_claim_ratio = #{level1ClaimRatio},</if>
+            <if test="level2Num != null">level_2_num = #{level2Num},</if>
+            <if test="level2ClaimRatio != null">level_2_claim_ratio = #{level2ClaimRatio},</if>
+        </trim>
+        where insurance_id = #{insuranceId}
+    </update>
+
+    <delete id="deleteInsuranceByInsuranceId" parameterType="Long">
+        delete from insurance where insurance_id = #{insuranceId}
+    </delete>
+
+    <delete id="deleteInsuranceByInsuranceIds" parameterType="String">
+        delete from insurance where insurance_id in 
+        <foreach item="insuranceId" collection="array" open="(" separator="," close=")">
+            #{insuranceId}
+        </foreach>
+    </delete>
+
+</mapper>

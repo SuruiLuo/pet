@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petHis.project.system.record.mapper.MedicationRecordMapper">
+
+    <resultMap type="MedicationRecord" id="MedicationRecordResult">
+        <result property="medicationId"    column="medication_id"    />
+        <result property="appointmentId"    column="appointment_id"    />
+        <result property="drugId"    column="drug_id"    />
+        <result property="dosage"    column="dosage"    />
+        <result property="usageMethod"    column="usage_method"    />
+        <result property="frequency"    column="frequency"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="days"    column="days"    />
+        <result property="petName" column="petName"/>
+        <result property="createBy" column="create_by"/>
+        <result property="drugName" column="drug_name"/>
+    </resultMap>
+
+    <sql id="selectMedicationRecordVo">
+        select p.name as petName, s.user_name AS create_by, d.drug_name,
+               m.medication_id, m.appointment_id, m.drug_id, m.dosage, m.usage_method, m.frequency, m.create_time,m.days
+        from medication_record m
+                 inner join drug_inventory d on d.drug_id = m.drug_id
+                 inner join appointments a on a.appointment_id = m.appointment_id
+                 inner join sys_user s on s.user_id = a.doctor_id
+                 inner join pets p on p.pet_id = a.pet_id
+    </sql>
+
+    <select id="selectMedicationRecordList" parameterType="MedicationRecord" resultMap="MedicationRecordResult">
+        <include refid="selectMedicationRecordVo"/>
+        <where>  
+            <if test="appointmentId != null "> and m.appointment_id = #{appointmentId}</if>
+            <if test="drugId != null "> and m.drug_id = #{drugId}</if>
+            <if test="dosage != null  and dosage != ''"> and m.dosage = #{dosage}</if>
+            <if test="usageMethod != null  and usageMethod != ''"> and m.usage_method = #{usageMethod}</if>
+            <if test="frequency != null  and frequency != ''"> and m.frequency = #{frequency}</if>
+            <if test="days != null"> and m.days = #{days}</if>
+            <if test="petName != null  and petName != ''"> and p.name like concat('%', #{petName}, '%')</if>
+            <if test="createBy != null  and createBy != ''"> and s.user_name like concat('%', #{createBy}, '%')</if>
+            <if test="drugName != null  and drugName != ''"> and d.drug_name like concat('%', #{drugName}, '%')</if>
+        </where>
+    </select>
+    
+    <select id="selectMedicationRecordByMedicationId" parameterType="Long" resultMap="MedicationRecordResult">
+        <include refid="selectMedicationRecordVo"/>
+        where medication_id = #{medicationId}
+    </select>
+
+    <insert id="insertMedicationRecord" parameterType="MedicationRecord" useGeneratedKeys="true" keyProperty="medicationId">
+        insert into medication_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="appointmentId != null">appointment_id,</if>
+            <if test="drugId != null">drug_id,</if>
+            <if test="dosage != null and dosage != ''">dosage,</if>
+            <if test="usageMethod != null">usage_method,</if>
+            <if test="frequency != null">frequency,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="days != null">days,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="appointmentId != null">#{appointmentId},</if>
+            <if test="drugId != null">#{drugId},</if>
+            <if test="dosage != null and dosage != ''">#{dosage},</if>
+            <if test="usageMethod != null">#{usageMethod},</if>
+            <if test="frequency != null">#{frequency},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="days != null">#{days},</if>
+         </trim>
+    </insert>
+
+    <update id="updateMedicationRecord" parameterType="MedicationRecord">
+        update medication_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="appointmentId != null">appointment_id = #{appointmentId},</if>
+            <if test="drugId != null">drug_id = #{drugId},</if>
+            <if test="dosage != null and dosage != ''">dosage = #{dosage},</if>
+            <if test="usageMethod != null">usage_method = #{usageMethod},</if>
+            <if test="frequency != null">frequency = #{frequency},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="days != null">days = #{days},</if>
+        </trim>
+        where medication_id = #{medicationId}
+    </update>
+
+    <delete id="deleteMedicationRecordByMedicationId" parameterType="Long">
+        delete from medication_record where medication_id = #{medicationId}
+    </delete>
+
+    <delete id="deleteMedicationRecordByMedicationIds" parameterType="String">
+        delete from medication_record where medication_id in 
+        <foreach item="medicationId" collection="array" open="(" separator="," close=")">
+            #{medicationId}
+        </foreach>
+    </delete>
+
+</mapper>

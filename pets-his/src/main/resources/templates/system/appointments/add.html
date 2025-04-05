@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" >
+<head>
+    <th:block th:include="include :: header('新增预约')" />
+    <th:block th:include="include :: datetimepicker-css" />
+    <th:block th:include="include :: select2-css" />
+</head>
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-appointments-add">
+            <div class="col-xs-12">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label is-required">选择宠物：</label>
+                    <div class="col-sm-8">
+                        <select name="petId" id="petSelect" class="form-control m-b">
+                            <!-- 这里将通过 JavaScript 动态填充宠物选项 -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-12">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label is-required">医生名：</label>
+                    <div class="col-sm-8">
+                        <select name="doctorId" id="doctorSelect" class="form-control m-b">
+                            <!-- 这里将通过 JavaScript 动态填充医生选项 -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xs-12">
+                <div class="form-group">
+                    <label class="col-sm-3 control-label is-required">预约时间：</label>
+                    <div class="col-sm-8">
+                        <div class="input-group date">
+                            <input name="appointmentTime" class="form-control" placeholder="yyyy-MM-dd" type="text" required>
+                            <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: datetimepicker-js" />
+    <th:block th:include="include :: select2-js" />
+    <script th:inline="javascript">
+        var prefix = ctx + "system/appointments"
+        $("#form-appointments-add").validate({
+            focusCleanup: true
+        });
+
+        function submitHandler() {
+            if ($.validate.form()) {
+                // console.log($('#form-appointments-add').serialize())
+                $.operate.save(prefix + "/add", $('#form-appointments-add').serialize());
+            }
+        }
+
+        $("input[name='appointmentTime']").datetimepicker({
+            format: "yyyy-mm-dd",
+            minView: "month",
+            autoclose: true
+        });
+
+        $(document).ready(function() {
+            // 封装一个通用的函数，用于获取数据并填充到指定的 select 元素中
+            function loadDataAndInitSelect(url, selectId, textField, valueField, params = {}) {
+                // console.log(params)
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: params, // 传递额外参数
+                    dataType: 'json',
+                    success: function(res) {
+                        console.log("--------------")
+                        console.log(res)
+                        var dataList = res.rows;
+                        var selectElement = $(selectId);
+                        // 清空原有的选项
+                        selectElement.empty();
+                        // 动态添加选项
+                        $.each(dataList, function(index, item) {
+                            var option = $('<option></option>');
+                            // 使用方括号语法获取属性值
+                            var displayText = item[textField];
+                            var optionValue = item[valueField];
+                            // 检查获取的值是否有效
+                            if (displayText !== undefined && optionValue !== undefined) {
+                                option.text(displayText);
+                                option.val(optionValue);
+                                selectElement.append(option);
+                            } else {
+                                console.log('未能获取到有效的属性值，textField:', textField, 'valueField:', valueField);
+                            }
+                        });
+                        // 初始化 Select2 插件，设置 placeholder 并清除默认选择
+                        selectElement.select2({
+                            placeholder: '请选择',  // 设置占位符文本
+                            allowClear: true        // 允许清除选择
+                        }).val(null).trigger('change');  // 清除默认选择并触发 change 事件
+                    },
+                    error: function(error) {
+                        console.log('请求出错:', error);
+                    }
+                });
+            }
+
+            // 加载宠物列表
+            loadDataAndInitSelect('/system/pets/list', '#petSelect', 'name', 'petId');
+
+            // 加载医生列表
+            loadDataAndInitSelect('/system/user/listByRole', '#doctorSelect', 'userName', 'userId', { roleKey: 'doctor' });
+        });
+    </script>
+</body>
+</html>

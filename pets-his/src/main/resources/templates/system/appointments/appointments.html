@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('预约列表')" />
+</head>
+<body class="gray-bg">
+     <div class="container-div">
+        <div class="row">
+            <div class="col-sm-12 search-collapse">
+                <form id="formId">
+                    <div class="select-list">
+                        <ul>
+                            <li>
+                                <label>宠物名：</label>
+                                <input type="text" name="petName" placeholder="请输入宠物名" onkeyup="handleEnterKey(event)"/>
+                            </li>
+                            <li>
+                                <label>医生名：</label>
+                                <input type="text" name="userName" placeholder="请输入医生名" onkeyup="handleEnterKey(event)"/>
+                            </li>
+                            <li>
+                                <label>客户名：</label>
+                                <input type="text" name="clientName" placeholder="请输入客户名" onkeyup="handleEnterKey(event)"/>
+                            </li>
+                            <!--状态-->
+                            <li>
+                                <label>预约状态：</label>
+                                <select name="status" th:with="status=${@dict.getType('sys_appointments_status')}">
+                                    <option value="">请选择预约状态</option>
+                                    <option  th:each="dict : ${status}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}"></option>
+                                </select>
+                            </li>
+                            <li>
+                                <label>预约时间：</label>
+                                <input type="text" class="time-input" placeholder="请选择预约时间" name="appointmentTime" onkeyup="handleEnterKey(event)"/>
+                            </li>
+                            <li>
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i class="fa fa-search"></i>&nbsp;搜索</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+
+            <div class="btn-group-sm" id="toolbar" role="group">
+                <a class="btn btn-success" onclick="$.operate.add()" shiro:hasPermission="system:appointments:add">
+                    <i class="fa fa-plus"></i> 添加
+                </a>
+                <a class="btn btn-primary single disabled" onclick="$.operate.edit()" shiro:hasPermission="system:appointments:edit">
+                    <i class="fa fa-edit"></i> 修改
+                </a>
+<!--                <a class="btn btn-danger multiple disabled" onclick="$.operate.removeAll()" shiro:hasPermission="system:appointments:remove">-->
+<!--                    <i class="fa fa-remove"></i> 删除-->
+<!--                </a>-->
+                <a class="btn btn-warning" onclick="$.table.exportExcel()" shiro:hasPermission="system:appointments:export">
+                    <i class="fa fa-download"></i> 导出
+                </a>
+            </div>
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table"></table>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var editFlag = [[${@permission.hasPermi('system:appointments:edit')}]];
+        var removeFlag = [[${@permission.hasPermi('system:appointments:remove')}]];
+        // console.log("状态：")
+        // console.log(status)
+        var prefix = ctx + "system/appointments";
+        // 存储预约状态字典数据的变量
+        var appointmentStatusDict = /*[[${@dict.getType('sys_appointments_status')}]]*/ [];
+        // 将字典数据转换为键值对形式，方便查找
+        var appointmentStatusMap = {};
+        // 同时创建一个存储样式类的映射
+        var appointmentStatusClassMap = {};
+        appointmentStatusDict.forEach(function(item) {
+            appointmentStatusMap[item.dictValue] = item.dictLabel;
+            var listClass = (item.listClass === "default" || typeof item.listClass === 'undefined') ? "" : "badge badge-" + item.listClass;
+            var cssClass = item.cssClass || listClass;
+            appointmentStatusClassMap[item.dictValue] = cssClass;
+        });
+        $(function() {
+            var options = {
+                url: prefix + "/list",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                removeUrl: prefix + "/remove",
+                exportUrl: prefix + "/export",
+                modalName: "预约",
+                columns: [{
+                    checkbox: true
+                },
+                {
+                    field: 'appointmentId',
+                    title: '预约ID'
+                },
+                {
+                    field: 'petId',
+                    title: '宠物ID'
+                },
+                {
+                    field: 'petName',
+                    title: '宠物名'
+                },
+                {
+                     field: 'clientName',
+                     title: '主人名'
+                },
+                {
+                    field: 'doctorId',
+                    title: '医生ID'
+                },
+
+                {
+                    field: 'userName',
+                    title: '医生名'
+                },
+                {
+                    field: 'appointmentTime',
+                    title: '预约时间'
+                },
+                {
+                    field: 'status',
+                    title: '预约状态',
+                    formatter: function(value) {
+                        if (typeof value === 'object') {
+                            console.error('status 字段的值是一个对象:', value);
+                            return '<span>未知</span>';
+                        }
+                        const label = appointmentStatusMap[value];
+                        const cssClass = appointmentStatusClassMap[value];
+                        if (label) {
+                            return `<span class="${cssClass}">${label}</span>`;
+                        } else {
+                            console.error('未找到对应的预约状态标签，value:', value);
+                            return '<span>未知状态</span>';
+                        }
+                    }
+                },
+                {
+                    title: '操作',
+                    align: 'center',
+                    formatter: function(value, row, index) {
+                        var actions = [];
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.appointmentId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.appointmentId + '\')"><i class="fa fa-remove"></i>删除</a>');
+                        return actions.join('');
+                    }
+                }]
+            };
+            $.table.init(options);
+        });
+        function handleEnterKey(event) {
+            // console.log(event.keyCode)
+            if (event.keyCode === 13) {
+                $.table.search();
+            }
+        }
+    </script>
+</body>
+</html>
